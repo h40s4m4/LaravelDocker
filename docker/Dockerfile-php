@@ -1,0 +1,37 @@
+# Base PHP image
+FROM php:8.3-fpm AS php_base
+
+# Install system dependencies
+RUN set -eux; \
+    apt-get update && apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+	acl \
+	file \
+	gettext \
+	git \
+	&& rm -rf /var/lib/apt/lists/*
+
+# Install PHPExtension Manager
+RUN curl -sSL https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions \
+    -o /usr/local/bin/install-php-extensions && \
+    chmod +x /usr/local/bin/install-php-extensions
+
+# Install PHP Extensions
+RUN set -eux; \
+	install-php-extensions \
+		@composer \
+		intl \
+		zip \
+        pdo_mysql
+
+# Install Composer.
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin --filename=composer
+
+# Copy entrypoint script and set permissions.
+COPY ./docker/scripts/laravel-start.sh /usr/local/bin/laravel-start.sh
+RUN chmod +x /usr/local/bin/laravel-start.sh
+
+ENTRYPOINT ["/usr/local/bin/laravel-start.sh"]
+
+HEALTHCHECK --interval=10s --timeout=10s --start-period=30s --retries=10 CMD [ -f /tmp/healthy ] || exit 1
+CMD ["sh", "-c", "php-fpm"]

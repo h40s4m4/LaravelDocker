@@ -1,0 +1,26 @@
+# Base MySQL Image
+FROM mysql:8.4 AS mysql_base
+
+ARG MYSQL_VERSION
+ARG MYSQL_RANDOM_ROOT_PASSWORD
+ARG MYSQL_DATABASE
+ARG MYSQL_USER
+ARG MYSQL_PASSWORD
+ARG INCLUDE_TEST_DB
+
+ENV MYSQL_VERSION=${MYSQL_VERSION}
+ENV MYSQL_RANDOM_ROOT_PASSWORD=${MYSQL_RANDOM_ROOT_PASSWORD}
+ENV MYSQL_DATABASE=${MYSQL_DATABASE}
+ENV MYSQL_USER=${MYSQL_USER}
+ENV MYSQL_PASSWORD=${MYSQL_PASSWORD}
+ENV INCLUDE_TEST_DB=${INCLUDE_TEST_DB}
+
+COPY ./docker/scripts/mysql-start.sh /usr/local/bin/mysql-start.sh
+RUN chmod +x /usr/local/bin/mysql-start.sh
+ENTRYPOINT ["usr/local/bin/mysql-start.sh"]
+
+# Expose port 3306 to allow connections to the database
+EXPOSE 3306
+
+# Start the MySQL server when the container is run
+CMD ["mysqld"]
