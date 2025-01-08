@@ -33,14 +33,17 @@ else
     exit 1
 fi
 
-#
-## Dependencies Install
-#if [ -z "$(ls -A 'vendor/' 2>/dev/null)" ]; then
-#  echo "The vendor file doesn't exist. Installing dependencies"
-#  composer install --prefer-dist --no-progress --no-interaction
-#else
-#   echo "The vendor file exist. skipping dependencies install"
-#fi
+# Permissions
+chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+
+# Dependencies Install
+if [ -z "$(ls -A 'vendor/' 2>/dev/null)" ]; then
+  echo "The vendor file doesn't exist. Installing dependencies"
+  composer install --prefer-dist --no-progress --no-interaction
+else
+   echo "The vendor file exist. skipping dependencies install"
+fi
 
 
 # Mark container as healthy
