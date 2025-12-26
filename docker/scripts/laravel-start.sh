@@ -1,53 +1,51 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
-echo "Starting Symfony Script :)"
-echo "Using Symfony Version: ${SYMFONY_VERSION}"
-echo "Using PHP Version: ${PHP_VERSION}"
+LARAVEL_VERSION=${LARAVEL_VERSION:-"12.*"}
+PHP_VERSION=${PHP_VERSION:-"8.2"}
 
-if [ -f composer.json ]; then
-  echo "A composer.json file exists, skipping the install of Symfony Skeleton."
-else
-  echo "A composer.json doesn't exist, creating Symfony Skeleton."
+echo "🚀 Starting Laravel Script"
+echo "Laravel Version: ${LARAVEL_VERSION}"
+echo "PHP Version: ${PHP_VERSION}"
 
-  # Create Symfony Skeleton projectcomposer create-project laravel/laravel:^9
-  composer create-project "laravel/laravel:^9" tmp --no-progress --no-interaction || {
-    echo "Error: Download of Laravel failed."
-    exit 1
-  }
+# Crear proyecto Laravel si no existe
+if [ ! -f composer.json ]; then
 
-  # Move directory contents to the current directory
-    mv tmp/* tmp/.* . 2>/dev/null || true
-    rm -rf tmp/
+    echo "No composer.json found — creating Laravel project."
+    #Create Laravel project in tmp directory
+    composer create-project "laravel/laravel:^${LARAVEL_VERSION}" tmp --prefer-dist --no-progress --no-interaction || {
+      echo "Error: Download of Laravel failed."
+      exit 1
+    }
 
-  # Basic Skeleton Install
-  composer require "php:>=$PHP_VERSION" --no-progress --no-interaction
+   # Move directory contents to the current directory
+   mv tmp/* tmp/.* . 2>/dev/null || true
+   rm -rf tmp/
 fi
 
-
-# Composer Check
+# Validar composer.json
 if composer validate --strict; then
-    echo "composer.json is valid."
+    echo "composer.json is valid ✅"
 else
-    echo "composer.json is invalid."
+    echo "composer.json is invalid ❌"
     exit 1
 fi
 
-# Permissions
+# Permisos
 chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Dependencies Install
-if [ -z "$(ls -A 'vendor/' 2>/dev/null)" ]; then
-  echo "The vendor file doesn't exist. Installing dependencies"
-  composer install --prefer-dist --no-progress --no-interaction
+# Instalar dependencias si no existen
+if [ ! -d "vendor" ] || [ -z "$(ls -A vendor/)" ]; then
+    echo "Installing dependencies..."
+    composer install --prefer-dist --no-progress --no-interaction
 else
-   echo "The vendor file exist. skipping dependencies install"
+    echo "Dependencies already installed. Skipping."
 fi
 
-
-# Mark container as healthy
+# Marcar contenedor como saludable
 touch /tmp/healthy
-echo "Container is now healthy."
+echo "Container marked as healthy ✅"
 
+# Ejecutar PHP-FPM
 exec docker-php-entrypoint "$@"
