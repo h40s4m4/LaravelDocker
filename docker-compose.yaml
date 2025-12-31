@@ -4,8 +4,9 @@ services:
       context: .
       dockerfile: ./docker/Dockerfile-php
       args:
-        UID: 1000
-        GID: 1000
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    user: "${UID:-1000}:${GID:-1000}"
     env_file:
       - ./docker/.env.docker
     volumes:

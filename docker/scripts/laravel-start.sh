@@ -11,7 +11,7 @@ CACHE_DIR=${APP_DIR}/bootstrap/cache
 
 echo "🚀 Starting Laravel container"
 echo "Laravel Version: ${LARAVEL_VERSION}"
-echo "Running as user: $(whoami)"
+echo "Running as user: $(whoami) (UID: $(id -u), GID: $(id -g))"
 
 # ---------------------------------
 # Crear proyecto Laravel si no existe
@@ -21,19 +21,20 @@ if [ ! -f "${APP_DIR}/composer.json" ]; then
     composer create-project laravel/laravel:^${LARAVEL_VERSION} ${APP_DIR}/tmp --prefer-dist --no-progress --no-interaction
 
     # Mover contenido al directorio final
-    mv ${APP_DIR}/tmp/* ${APP_DIR}/
-    mv ${APP_DIR}/tmp/.* ${APP_DIR}/ 2>/dev/null || true
+    cp -a ${APP_DIR}/tmp/. ${APP_DIR}/
     rm -rf ${APP_DIR}/tmp
 fi
 
 # ---------------------------------
 # Validar composer.json
 # ---------------------------------
-if composer validate --strict; then
-    echo "composer.json is valid ✅"
-else
-    echo "composer.json is invalid ❌"
-    exit 1
+if [ -f "${APP_DIR}/composer.json" ]; then
+    if composer validate --strict; then
+        echo "composer.json is valid ✅"
+    else
+        echo "composer.json is invalid ❌"
+        exit 1
+    fi
 fi
 
 # ---------------------------------
@@ -49,7 +50,11 @@ fi
 # ---------------------------------
 # Permisos correctos para Laravel
 # ---------------------------------
-# Solo asegurar storage y cache
+# Aseguramos que existan las carpetas críticas
+mkdir -p ${STORAGE_DIR}/framework/cache ${STORAGE_DIR}/framework/sessions ${STORAGE_DIR}/framework/views ${STORAGE_DIR}/logs ${CACHE_DIR}
+
+echo "Setting permissions for storage and cache..."
+# En desarrollo, esto ayuda a evitar problemas si el host creó los archivos con otro umask
 chmod -R 775 ${STORAGE_DIR} ${CACHE_DIR}
 
 # ---------------------------------

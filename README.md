@@ -17,3 +17,6 @@ Install a TEST DB too
 2. Run `docker compose up --pull always -d --wait` to set up and start a fresh Symfony project
 3. Open `https://localhost` in your favorite web browser
 4. Run `docker compose down --remove-orphans` to stop the Docker containers.
+
+## Remover componentes de Docker
+docker system prune -a --volumes
