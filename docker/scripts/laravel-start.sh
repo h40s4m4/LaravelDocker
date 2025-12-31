@@ -1,29 +1,34 @@
 #!/bin/sh
 set -e
 
+# ---------------------------------
+# Variables
+# ---------------------------------
 LARAVEL_VERSION=${LARAVEL_VERSION:-"12.*"}
-PHP_VERSION=${PHP_VERSION:-"8.2"}
+APP_DIR=/var/www/html
+STORAGE_DIR=${APP_DIR}/storage
+CACHE_DIR=${APP_DIR}/bootstrap/cache
 
-echo "🚀 Starting Laravel Script"
+echo "🚀 Starting Laravel container"
 echo "Laravel Version: ${LARAVEL_VERSION}"
-echo "PHP Version: ${PHP_VERSION}"
+echo "Running as user: $(whoami)"
 
+# ---------------------------------
 # Crear proyecto Laravel si no existe
-if [ ! -f composer.json ]; then
-
+# ---------------------------------
+if [ ! -f "${APP_DIR}/composer.json" ]; then
     echo "No composer.json found — creating Laravel project."
-    #Create Laravel project in tmp directory
-    composer create-project "laravel/laravel:^${LARAVEL_VERSION}" tmp --prefer-dist --no-progress --no-interaction || {
-      echo "Error: Download of Laravel failed."
-      exit 1
-    }
+    composer create-project laravel/laravel:^${LARAVEL_VERSION} ${APP_DIR}/tmp --prefer-dist --no-progress --no-interaction
 
-   # Move directory contents to the current directory
-   mv tmp/* tmp/.* . 2>/dev/null || true
-   rm -rf tmp/
+    # Mover contenido al directorio final
+    mv ${APP_DIR}/tmp/* ${APP_DIR}/
+    mv ${APP_DIR}/tmp/.* ${APP_DIR}/ 2>/dev/null || true
+    rm -rf ${APP_DIR}/tmp
 fi
 
+# ---------------------------------
 # Validar composer.json
+# ---------------------------------
 if composer validate --strict; then
     echo "composer.json is valid ✅"
 else
@@ -31,21 +36,29 @@ else
     exit 1
 fi
 
-# Permisos
-chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
-chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
-
-# Instalar dependencias si no existen
-if [ ! -d "vendor" ] || [ -z "$(ls -A vendor/)" ]; then
+# ---------------------------------
+# Instalar dependencias si faltan
+# ---------------------------------
+if [ ! -d "${APP_DIR}/vendor" ] || [ -z "$(ls -A ${APP_DIR}/vendor/)" ]; then
     echo "Installing dependencies..."
     composer install --prefer-dist --no-progress --no-interaction
 else
     echo "Dependencies already installed. Skipping."
 fi
 
+# ---------------------------------
+# Permisos correctos para Laravel
+# ---------------------------------
+# Solo asegurar storage y cache
+chmod -R 775 ${STORAGE_DIR} ${CACHE_DIR}
+
+# ---------------------------------
 # Marcar contenedor como saludable
+# ---------------------------------
 touch /tmp/healthy
 echo "Container marked as healthy ✅"
 
+# ---------------------------------
 # Ejecutar PHP-FPM
+# ---------------------------------
 exec docker-php-entrypoint "$@"

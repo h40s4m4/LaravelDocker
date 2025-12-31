@@ -3,12 +3,17 @@ services:
     build:
       context: .
       dockerfile: ./docker/Dockerfile-php
+      args:
+        UID: 1000
+        GID: 1000
     env_file:
       - ./docker/.env.docker
     volumes:
       - .:/var/www/html
+    ports:
+      - "5173:5173"
     networks:
-      - symfony
+      - laravel
 
   nginx:
     build:
@@ -25,11 +30,10 @@ services:
     depends_on:
       - php
     networks:
-      - symfony
+      - laravel
 
   mysql:
     image: mysql:${MYSQL_VERSION-8.4}
-    restart: always
     env_file:
       - ./docker/.env.docker
     volumes:
@@ -38,9 +42,9 @@ services:
     ports:
       - "3306:3306"
     networks:
-      - symfony
+      - laravel
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
       interval: 10s
       timeout: 10s
       retries: 3
@@ -50,5 +54,5 @@ volumes:
   database_data:
 
 networks:
-  symfony:
+  laravel:
     driver: bridge

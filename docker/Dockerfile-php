@@ -1,44 +1,48 @@
+# docker/Dockerfile-php
 FROM php:8.2-fpm AS php_base
+
+# ARGs para usuario
+ARG UID=1000
+ARG GID=1000
 
 # Instalar dependencias del sistema
 RUN set -eux; \
     apt-get update && apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
-        acl \
-        file \
-        gettext \
-        git \
-        unzip \
-        libicu-dev \
-        libzip-dev \
-        curl \
-        ca-certificates \
-        gnupg \
-        dirmngr \
-        && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-        && apt-get install -y nodejs \
-        && npm install -g npm@latest \
+        acl file gettext git unzip libicu-dev libzip-dev curl ca-certificates gnupg dirmngr \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && npm install -g npm@latest \
     && rm -rf /var/lib/apt/lists/*
 
 # Instalar PHP Extension Manager
 RUN curl -sSL https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions \
-    -o /usr/local/bin/install-php-extensions && \
-    chmod +x /usr/local/bin/install-php-extensions
+    -o /usr/local/bin/install-php-extensions && chmod +x /usr/local/bin/install-php-extensions
 
-# Instalar extensiones PHP
-RUN set -eux; \
-    install-php-extensions \
-        @composer \
-        intl \
-        zip \
-        pdo_mysql
+# Instalar extensiones PHP necesarias
+RUN install-php-extensions @composer intl zip pdo_mysql
 
+# Crear grupo y usuario de Laravel con UID/GID de WSL
+RUN if ! getent group ${GID} >/dev/null; then groupadd -g ${GID} laravel; fi \
+    && if ! id -u ${UID} >/dev/null 2>&1; then useradd -m -u ${UID} -g ${GID} laraveluser; fi
 
-
-# Copiar script de arranque
+# Copiar script de inicio
 COPY ./docker/scripts/laravel-start.sh /usr/local/bin/laravel-start.sh
-RUN chmod +x /usr/local/bin/laravel-start.sh
+
+# Cambiar permisos del script y de storage/cache como root
+USER root
+RUN chmod +x /usr/local/bin/laravel-start.sh && \
+    mkdir -p /var/www/html/storage /var/www/html/bootstrap/cache && \
+    chown -R ${UID}:${GID} /var/www/html/storage /var/www/html/bootstrap/cache && \
+    chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+
+# Cambiar a usuario no-root
+USER laraveluser
+WORKDIR /var/www/html
 
 ENTRYPOINT ["/usr/local/bin/laravel-start.sh"]
-HEALTHCHECK --interval=10s --timeout=10s --start-period=30s --retries=10 CMD [ -f /tmp/healthy ] || exit 1
+
+HEALTHCHECK --interval=10s --timeout=10s --start-period=30s --retries=10 \
+CMD [ -f /tmp/healthy ] || exit 1
+
 CMD ["sh", "-c", "php-fpm"]
